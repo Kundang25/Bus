@@ -79,8 +79,8 @@ export const TicketReceiptModal: React.FC<TicketReceiptModalProps> = ({
 
             {/* Transport Agency Header */}
             <div className="text-center pb-3 border-b border-dashed border-slate-400 space-y-0.5">
-              <h3 className="font-black text-sm uppercase tracking-wider text-slate-950">BMTC / BEST TRANSPORT</h3>
-              <p className="text-[10px] text-slate-600">SHAKTI YATRA DIGITAL VERIFIED</p>
+              <h3 className="font-black text-sm uppercase tracking-wider text-slate-950">STRIDE DEMO TICKET</h3>
+              <p className="text-[10px] text-slate-600">PROTOTYPE RECEIPT — NOT AN OPERATOR TICKET</p>
               <p className="text-[10px] text-slate-700 font-bold">BUS: {ticket.busNumber} | ROUTE: {ticket.routeNumber}</p>
             </div>
 
@@ -126,7 +126,7 @@ export const TicketReceiptModal: React.FC<TicketReceiptModalProps> = ({
               <div className="bg-white p-2 rounded-xl shadow-xs border border-slate-300">
                 <QRCodeSVG value={ticket.qrPayload} size={110} level="M" />
               </div>
-              <p className="text-[9px] text-slate-500 text-center uppercase tracking-tight">Scan QR for Gate Validation or Conductor Audit</p>
+              <p className="text-[9px] text-slate-500 text-center uppercase tracking-tight">Prototype QR — not for gate validation</p>
             </div>
           </div>
 

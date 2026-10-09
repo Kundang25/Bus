@@ -1,7 +1,21 @@
 import { Ticket, TicketStatus, PaymentMode, PaymentStatus, FareCategory, BusStop } from './types';
+import { assertForwardJourney } from './fareCalculator';
 
 const STORAGE_KEY = 'stride_issued_tickets_v1';
-const IDEMPOTENCY_KEY_CACHE = new Set<string>();
+
+export class TicketingPersistError extends Error {
+  constructor(message = 'Could not save ticket to browser storage') {
+    super(message);
+    this.name = 'TicketingPersistError';
+  }
+}
+
+export class InvalidJourneyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidJourneyError';
+  }
+}
 
 export class TicketingEngine {
   private static getStoredTickets(): Ticket[] {
@@ -16,9 +30,28 @@ export class TicketingEngine {
   private static saveTickets(tickets: Ticket[]) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+      const roundTrip = localStorage.getItem(STORAGE_KEY);
+      if (!roundTrip) {
+        throw new TicketingPersistError();
+      }
     } catch (e) {
-      console.warn('LocalStorage save failed:', e);
+      if (e instanceof TicketingPersistError) throw e;
+      throw new TicketingPersistError();
     }
+  }
+
+  public static generateTicketId(existing: Ticket[] = this.getStoredTickets()): string {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const used = new Set(existing.map((t) => t.id));
+    for (let i = 0; i < 8; i++) {
+      const entropy =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID().replace(/-/g, '').slice(0, 12)
+          : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+      const ticketId = `TKT-${dateStr}-${entropy.toUpperCase()}`;
+      if (!used.has(ticketId)) return ticketId;
+    }
+    throw new TicketingPersistError('Could not allocate a unique ticket ID');
   }
 
   public static issueTicket(params: {
@@ -38,22 +71,26 @@ export class TicketingEngine {
     isOffline?: boolean;
     isLabTest?: boolean;
   }): Ticket {
-    const key = params.idempotencyKey || `IK-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-    
-    // Check double-tap idempotency
-    if (IDEMPOTENCY_KEY_CACHE.has(key)) {
-      const existing = this.getStoredTickets().find((t) => t.idempotencyKey === key);
-      if (existing) return existing;
+    const journey = assertForwardJourney(params.fromStop, params.toStop);
+    if (!journey.ok) {
+      throw new InvalidJourneyError(journey.reason);
     }
-    IDEMPOTENCY_KEY_CACHE.add(key);
+
+    const tickets = this.getStoredTickets();
+    const key = params.idempotencyKey || `IK-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`}`;
+
+    const existingByKey = tickets.find((t) => t.idempotencyKey === key);
+    if (existingByKey) {
+      return existingByKey;
+    }
 
     const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSeq = Math.floor(1000 + Math.random() * 9000);
-    const ticketId = `TKT-${dateStr}-${randomSeq}`;
+    const ticketId = this.generateTicketId(tickets);
 
     const qrPayload = JSON.stringify({
       tktId: ticketId,
+      demo: true,
+      prototype: true,
       bus: params.busNumber,
       route: params.routeNumber,
       from: params.fromStop.code,
@@ -82,17 +119,15 @@ export class TicketingEngine {
       paymentStatus: params.paymentStatus || 'completed',
       status: 'valid',
       issuedAt: now.toISOString(),
-      synced: !params.isOffline,
+      synced: false,
       isOffline: !!params.isOffline,
       printCount: 1,
       qrPayload,
       isLabTest: !!params.isLabTest
     };
 
-    const tickets = this.getStoredTickets();
-    tickets.unshift(newTicket);
-    this.saveTickets(tickets);
-
+    const next = [newTicket, ...tickets];
+    this.saveTickets(next);
     return newTicket;
   }
 
@@ -105,8 +140,7 @@ export class TicketingEngine {
     const index = tickets.findIndex((t) => t.id === ticketId);
     if (index === -1) return null;
 
-    const ticket = tickets[index];
-    ticket.paymentStatus = status;
+    const ticket = { ...tickets[index], paymentStatus: status };
     tickets[index] = ticket;
     this.saveTickets(tickets);
     return ticket;
@@ -117,10 +151,12 @@ export class TicketingEngine {
     const index = tickets.findIndex((t) => t.id === ticketId);
     if (index === -1) return null;
 
-    const ticket = tickets[index];
-    ticket.status = 'voided';
-    ticket.voidReason = reason;
-    ticket.voidedAt = new Date().toISOString();
+    const ticket: Ticket = {
+      ...tickets[index],
+      status: 'voided' as TicketStatus,
+      voidReason: reason,
+      voidedAt: new Date().toISOString()
+    };
 
     tickets[index] = ticket;
     this.saveTickets(tickets);
@@ -132,9 +168,7 @@ export class TicketingEngine {
     const index = tickets.findIndex((t) => t.id === ticketId);
     if (index === -1) return null;
 
-    const ticket = tickets[index];
-    ticket.printCount = (ticket.printCount || 1) + 1;
-
+    const ticket = { ...tickets[index], printCount: (tickets[index].printCount || 1) + 1 };
     tickets[index] = ticket;
     this.saveTickets(tickets);
     return ticket;
@@ -142,6 +176,5 @@ export class TicketingEngine {
 
   public static clearAllTickets() {
     localStorage.removeItem(STORAGE_KEY);
-    IDEMPOTENCY_KEY_CACHE.clear();
   }
 }

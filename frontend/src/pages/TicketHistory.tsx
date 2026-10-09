@@ -103,7 +103,7 @@ export const TicketHistory: React.FC = () => {
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
                     <span className={`w-2.5 h-2.5 rounded-full ${paymentColorClass}`}></span>
-                    <span className="font-mono-numbers font-black text-[#0F172A]">{ticket.id}</span>
+                    <span className="font-mono-numbers font-black text-[#0F172A] truncate max-w-[160px]">{ticket.id}</span>
                   </div>
                   
                   <div className="flex items-center gap-1">

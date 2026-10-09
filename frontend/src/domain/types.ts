@@ -96,6 +96,7 @@ export interface UsabilityLog {
   misTapCount: number;
   handedness: Handedness;
   displayMode: DisplayMode;
+  source?: 'desktop-emulated' | 'phone';
 }
 
 export interface ConductorSettings {

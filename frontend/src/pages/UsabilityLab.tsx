@@ -25,11 +25,11 @@ export const UsabilityLabPage: React.FC = () => {
   const logs = UsabilityTimerEngine.getLogs();
 
   const handleStartChallenge = () => {
-    setSelectedDestination(activeRoute.stops[activeRoute.stops.length > 3 ? 3 : 1]);
+    setSelectedDestination(null);
     setPassengerCount(3);
     usabilityEngine.startTimer();
     setTestState('running');
-    toast.info('Timer started! Tap Destination ➔ Tap Issue Ticket!');
+    toast.info('Timer started with no destination. Tap a destination, then Issue.');
   };
 
   const handleDestinationTap = (stop: any) => {
@@ -43,11 +43,18 @@ export const UsabilityLabPage: React.FC = () => {
       return;
     }
 
-    const ticket = issueTicket({ isLabTest: true });
+    if (!selectedDestination) {
+      toast.warning('Select a destination before issuing');
+      usabilityEngine.recordMisTap();
+      return;
+    }
+
+    const ticket = issueTicket({ isLabTest: true, passengerCount: 3 });
     if (ticket) {
-      const log = usabilityEngine.stopAndLog('Nielsen 3-Passenger Challenge', passengerCount, settings.handedness, settings.displayMode);
+      const log = usabilityEngine.stopAndLog('Nielsen 3-Passenger Challenge', 3, settings.handedness, settings.displayMode);
       setLastResult(log);
       setTestState('completed');
+      setSelectedDestination(null);
 
       if (log?.successUnder4Sec) {
         toast.success(`PASSED! Issued 3-Pax Ticket in ${(log.totalDurationMs / 1000).toFixed(2)}s!`);
@@ -198,7 +205,7 @@ export const UsabilityLabPage: React.FC = () => {
 
             {/* Stop Buttons */}
             <div className="grid grid-cols-2 gap-2">
-              {activeRoute.stops.slice(1, 5).map((stop) => {
+              {activeRoute.stops.filter((s) => s.stageNumber > currentStop.stageNumber).slice(0, 4).map((stop) => {
                 const isSelected = selectedDestination?.id === stop.id;
                 return (
                   <button
@@ -220,10 +227,15 @@ export const UsabilityLabPage: React.FC = () => {
             {/* Massive Issue Button */}
             <button
               onClick={handleIssueTap}
-              className="w-full py-4 rounded-2xl bg-[#0B7A5A] hover:bg-[#09664b] text-white font-black text-base shadow-lg flex items-center justify-center gap-2 transition-all"
+              disabled={!selectedDestination || testState !== 'running'}
+              className={`w-full py-4 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-2 transition-all ${
+                selectedDestination && testState === 'running'
+                  ? 'bg-[#0B7A5A] hover:bg-[#09664b] text-white'
+                  : 'bg-[#E2E8F0] text-[#475569] cursor-not-allowed'
+              }`}
             >
               <TicketIcon className="w-5 h-5 fill-white" />
-              ISSUE 3-PASSENGER TICKET (STOP TIMER)
+              {selectedDestination ? 'ISSUE 3-PASSENGER TICKET (STOP TIMER)' : 'SELECT A DESTINATION FIRST'}
             </button>
           </div>
 

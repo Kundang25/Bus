@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { ConductorSettings, ConductorShift, Ticket, Route, BusStop, PaymentMode, PaymentStatus, FareCategory, Language } from '../domain/types';
 import { SAMPLE_ROUTES, getRouteById } from '../domain/routesData';
-import { calculateFare } from '../domain/fareCalculator';
-import { TicketingEngine } from '../domain/ticketingEngine';
+import { calculateFare, assertForwardJourney } from '../domain/fareCalculator';
+import { InvalidJourneyError, TicketingEngine, TicketingPersistError } from '../domain/ticketingEngine';
+import { toast } from 'sonner';
 import { UsabilityTimerEngine } from '../domain/usabilityTimer';
 
 const TRANSLATIONS: Record<Language, Record<string, string>> = {
@@ -110,7 +111,16 @@ interface StrideContextType {
   setFareCategory: (cat: FareCategory) => void;
   paymentMode: PaymentMode;
   setPaymentMode: (mode: PaymentMode) => void;
-  issueTicket: (options?: { isLabTest?: boolean; paymentStatus?: PaymentStatus }) => Ticket | null;
+  issueTicket: (options?: {
+    isLabTest?: boolean;
+    paymentStatus?: PaymentStatus;
+    fromStop?: BusStop;
+    toStop?: BusStop;
+    passengerCount?: number;
+    category?: FareCategory;
+    paymentMode?: PaymentMode;
+    idempotencyKey?: string;
+  }) => Ticket | null;
   repeatLastTicket: () => Ticket | null;
   confirmDigitalPayment: (ticketId: string) => void;
   failDigitalPayment: (ticketId: string) => void;
@@ -305,37 +315,70 @@ export const StrideProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const issueTicket = (options?: { isLabTest?: boolean; paymentStatus?: PaymentStatus }): Ticket | null => {
-    if (!activeShift || !selectedDestination) return null;
-    const currentStop = activeRoute.stops[currentStopIndex];
+  const issueTicket = (options?: {
+    isLabTest?: boolean;
+    paymentStatus?: PaymentStatus;
+    fromStop?: BusStop;
+    toStop?: BusStop;
+    passengerCount?: number;
+    category?: FareCategory;
+    paymentMode?: PaymentMode;
+    idempotencyKey?: string;
+  }): Ticket | null => {
+    if (!activeShift) return null;
+    const currentStop = options?.fromStop || activeRoute.stops[currentStopIndex];
+    const dest = options?.toStop || selectedDestination;
+    if (!dest) return null;
 
-    const fare = calculateFare(activeRoute, currentStop, selectedDestination, passengerCount, fareCategory);
+    const pax = options?.passengerCount ?? passengerCount;
+    const category = options?.category || fareCategory;
+    const mode = options?.paymentMode || paymentMode;
 
-    const ticket = TicketingEngine.issueTicket({
-      shiftId: activeShift.shiftId,
-      busNumber: activeShift.busNumber,
-      routeNumber: activeShift.routeNumber,
-      conductorId: activeShift.conductorId,
-      fromStop: currentStop,
-      toStop: selectedDestination,
-      passengerCount: fare.passengerCount,
-      category: fareCategory,
-      unitFare: fare.unitFare,
-      totalFare: fare.totalFare,
-      paymentMode,
-      paymentStatus: options?.paymentStatus || (paymentMode === 'cash' ? 'completed' : 'pending'),
-      isOffline: settings.simulateNetworkOffline,
-      isLabTest: options?.isLabTest || false
-    });
-
-    setLastIssuedTicket(ticket);
-    refreshTickets();
-
-    if (settings.hapticFeedback && navigator.vibrate) {
-      navigator.vibrate([40, 30, 40]);
+    const journey = assertForwardJourney(currentStop, dest);
+    if (!journey.ok) {
+      toast.error(journey.reason);
+      return null;
     }
 
-    return ticket;
+    const fare = calculateFare(activeRoute, currentStop, dest, pax, category);
+
+    try {
+      const ticket = TicketingEngine.issueTicket({
+        shiftId: activeShift.shiftId,
+        busNumber: activeShift.busNumber,
+        routeNumber: activeShift.routeNumber,
+        conductorId: activeShift.conductorId,
+        fromStop: currentStop,
+        toStop: dest,
+        passengerCount: fare.passengerCount,
+        category,
+        unitFare: fare.unitFare,
+        totalFare: fare.totalFare,
+        paymentMode: mode,
+        paymentStatus: options?.paymentStatus || (mode === 'cash' || mode === 'pass' ? 'completed' : 'pending'),
+        idempotencyKey: options?.idempotencyKey,
+        isOffline: settings.simulateNetworkOffline,
+        isLabTest: options?.isLabTest || false
+      });
+
+      setLastIssuedTicket(ticket);
+      refreshTickets();
+
+      if (settings.hapticFeedback && navigator.vibrate) {
+        navigator.vibrate([40, 30, 40]);
+      }
+
+      return ticket;
+    } catch (err) {
+      if (err instanceof InvalidJourneyError) {
+        toast.error(err.message);
+      } else if (err instanceof TicketingPersistError) {
+        toast.error('Ticket was not saved. Nothing issued.');
+      } else {
+        toast.error('Failed to issue ticket');
+      }
+      return null;
+    }
   };
 
   const repeatLastTicket = (): Ticket | null => {
@@ -348,7 +391,13 @@ export const StrideProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setFareCategory(last.category || 'adult');
     setPaymentMode(last.paymentMode);
 
-    return issueTicket();
+    return issueTicket({
+      fromStop: last.fromStop,
+      toStop: last.toStop,
+      passengerCount: last.passengerCount,
+      category: last.category || 'adult',
+      paymentMode: last.paymentMode
+    });
   };
 
   const confirmDigitalPayment = (ticketId: string) => {

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useStride } from '../../contexts/StrideContext';
 import { DestinationSelector } from './DestinationSelector';
 import { ChangeCalculator } from './ChangeCalculator';
 import { TicketReceiptModal } from './TicketReceiptModal';
 import { calculateFare } from '../../domain/fareCalculator';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, Banknote, QrCode, CreditCard, Sparkles, AlertCircle, Coins, ChevronRight, Zap, CheckCircle2, XCircle, RefreshCw, Info, Minus, Plus, RotateCcw, Ticket as TicketIcon } from 'lucide-react';
+import { Users, Banknote, QrCode, CreditCard, Coins, ChevronRight, CheckCircle2, XCircle, Info, Minus, Plus, RotateCcw, Ticket as TicketIcon } from 'lucide-react';
 import { FareCategory } from '../../domain/types';
 import { toast } from 'sonner';
 
@@ -39,6 +39,8 @@ export const QuickTicketing: React.FC = () => {
   const [isIssuing, setIsIssuing] = useState(false);
   const [digitalPaymentModalOpen, setDigitalPaymentModalOpen] = useState(false);
   const [pendingDigitalTicketId, setPendingDigitalTicketId] = useState<string | null>(null);
+  const issueIdempotencyKey = useRef<string | null>(null);
+  const isRightHand = settings.handedness !== 'left';
 
   // Fare Calculation
   const fare = selectedDestination
@@ -59,17 +61,27 @@ export const QuickTicketing: React.FC = () => {
 
     if (isIssuing) return;
     setIsIssuing(true);
+    if (!issueIdempotencyKey.current) {
+      issueIdempotencyKey.current =
+        crypto.randomUUID?.() || `IK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
 
     try {
       if (paymentMode === 'upi_qr' || paymentMode === 'smart_card') {
-        const ticket = issueTicket({ paymentStatus: 'pending' });
+        const ticket = issueTicket({
+          paymentStatus: 'pending',
+          idempotencyKey: issueIdempotencyKey.current
+        });
         if (ticket) {
           setPendingDigitalTicketId(ticket.id);
           setDigitalPaymentModalOpen(true);
-          toast.info('Waiting for simulated digital payment confirmation...');
+          toast.info('Simulated UPI waiting — no real payment or bank check.');
         }
       } else {
-        const ticket = issueTicket({ paymentStatus: 'completed' });
+        const ticket = issueTicket({
+          paymentStatus: 'completed',
+          idempotencyKey: issueIdempotencyKey.current
+        });
         if (ticket) {
           toast.success(`Ticket Issued! #${ticket.id} (${ticket.passengerCount} Pax - ₹${ticket.totalFare})`, {
             action: {
@@ -84,7 +96,10 @@ export const QuickTicketing: React.FC = () => {
     } catch (err) {
       toast.error('Failed to issue ticket');
     } finally {
-      setTimeout(() => setIsIssuing(false), 400);
+      setTimeout(() => {
+        setIsIssuing(false);
+        issueIdempotencyKey.current = null;
+      }, 400);
     }
   };
 
@@ -107,7 +122,7 @@ export const QuickTicketing: React.FC = () => {
       confirmDigitalPayment(pendingDigitalTicketId);
       setDigitalPaymentModalOpen(false);
       setPendingDigitalTicketId(null);
-      toast.success('Digital Payment Verified & Ticket Confirmed!');
+      toast.success('Simulated payment marked complete — not a real UPI verification.');
     }
   };
 
@@ -116,7 +131,7 @@ export const QuickTicketing: React.FC = () => {
       failDigitalPayment(pendingDigitalTicketId);
       setDigitalPaymentModalOpen(false);
       setPendingDigitalTicketId(null);
-      toast.error('Digital Payment Failed / Cancelled!');
+      toast.error('Simulated payment marked failed / cancelled.');
     }
   };
 
@@ -124,17 +139,19 @@ export const QuickTicketing: React.FC = () => {
     <div className="flex flex-col h-full justify-between space-y-3 pb-2 select-none overflow-y-auto scrollbar-thin pr-1">
       
       {/* Compact 1-Line Header Bar */}
-      <div className="bg-white border border-[#E2E8F0] rounded-2xl p-2.5 shadow-xs flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#0B7A5A]"></span>
+      <div className={`bg-white border border-[#E2E8F0] rounded-2xl p-2.5 shadow-xs flex items-center justify-between text-xs ${
+        isRightHand ? '' : 'flex-row-reverse'
+      }`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#0B7A5A] shrink-0"></span>
           <span className="font-extrabold text-[#0F172A] text-xs">Route {activeRoute.routeNumber}</span>
           <span className="text-[11px] text-[#475569] truncate max-w-[140px] font-medium">• {activeShift?.direction || 'UP'} Bound</span>
         </div>
         <button
           onClick={handleRepeatLast}
-          className="text-[10px] bg-[#E3F4EE] hover:bg-[#0B7A5A] text-[#0B7A5A] hover:text-white font-extrabold px-2 py-1 rounded-xl border border-[#0B7A5A]/30 flex items-center gap-1 transition-all"
+          className="text-[10px] bg-[#E3F4EE] hover:bg-[#0B7A5A] text-[#0B7A5A] hover:text-white font-extrabold px-2 py-1 rounded-xl border border-[#0B7A5A]/30 flex items-center gap-1 transition-all shrink-0"
         >
-          <RotateCcw className="w-3 h-3" /> Repeat Last
+          <RotateCcw className="w-3 h-3" /> {t('repeatLast')}
         </button>
       </div>
 
@@ -176,17 +193,27 @@ export const QuickTicketing: React.FC = () => {
         <div className="grid grid-cols-5 gap-1.5">
           {[1, 2, 3, 4, 5].map((cnt) => {
             const isSelected = passengerCount === cnt;
+            const isNielsenPreset = cnt === 3;
             return (
               <button
                 key={cnt}
                 onClick={() => setPassengerCount(cnt)}
-                className={`py-2 rounded-xl font-extrabold text-xs transition-all border ${
+                className={`py-2 rounded-xl font-extrabold text-[11px] leading-tight transition-all border ${
                   isSelected
-                    ? 'bg-[#0B7A5A] text-white border-[#0B7A5A] ring-2 ring-[#0B7A5A]/20 font-bold shadow-xs'
+                    ? 'bg-[#0B7A5A] text-white border-[#0B7A5A] ring-2 ring-[#0B7A5A]/20 shadow-xs'
+                    : isNielsenPreset
+                    ? 'bg-[#E3F4EE] text-[#0B7A5A] border-[#0B7A5A] ring-1 ring-[#0B7A5A]/30'
                     : 'bg-[#F5F7FA] hover:bg-[#E2E8F0] text-[#0F172A] border-[#E2E8F0]'
                 }`}
               >
-                {cnt}
+                {isNielsenPreset ? (
+                  <span className="flex flex-col items-center">
+                    <span>3</span>
+                    <span className="text-[8px] font-bold uppercase tracking-wide">Adults</span>
+                  </span>
+                ) : (
+                  cnt
+                )}
               </button>
             );
           })}
@@ -286,13 +313,15 @@ export const QuickTicketing: React.FC = () => {
       </div>
 
       {/* Step 5: Sticky Summary Bar & Massive Issue Action Button */}
-      <div className="pt-1 space-y-2">
+      <div className="sticky bottom-0 z-10 pt-1 pb-1 space-y-2 bg-[#F5F7FA]">
         {fare && (
-          <div className="bg-white p-2.5 rounded-xl border border-[#E2E8F0] shadow-xs flex items-center justify-between text-xs font-semibold text-[#0F172A]">
-            <span className="truncate">
+          <div className={`bg-white p-2.5 rounded-xl border border-[#E2E8F0] shadow-xs flex items-center justify-between gap-2 text-xs font-semibold text-[#0F172A] ${
+            isRightHand ? '' : 'flex-row-reverse text-right'
+          }`}>
+            <span className="truncate min-w-0">
               {currentStop.name} ➔ {selectedDestination?.name}
             </span>
-            <span className="font-mono-numbers font-black text-sm text-[#0F172A] shrink-0 ml-2">
+            <span className="font-mono-numbers font-black text-sm text-[#0F172A] shrink-0">
               {passengerCount} × ₹{fare.unitFare} = ₹{fare.totalFare}
             </span>
           </div>
@@ -301,21 +330,21 @@ export const QuickTicketing: React.FC = () => {
         <button
           onClick={handleIssueTicketPressed}
           disabled={!selectedDestination || isIssuing}
-          className={`w-full py-4 px-5 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-2 transition-all active:scale-98 ${
+          className={`w-full py-4 px-3 rounded-2xl font-black text-sm sm:text-base shadow-lg flex items-center justify-center gap-2 transition-all active:scale-98 ${
             selectedDestination && !isIssuing
               ? 'bg-[#0B7A5A] hover:bg-[#09664b] text-white ring-4 ring-[#0B7A5A]/20'
               : 'bg-[#E2E8F0] text-[#475569] cursor-not-allowed border border-[#E2E8F0]'
-          }`}
+          } ${isRightHand ? '' : 'flex-row-reverse'}`}
         >
-          <TicketIcon className="w-5 h-5 fill-white" />
-          <span>
+          <TicketIcon className="w-5 h-5 fill-current shrink-0" />
+          <span className="truncate">
             {isIssuing
               ? 'ISSUING TICKET...'
               : fare
-              ? `ISSUE ${passengerCount} TICKETS · ₹${fare.totalFare}`
+              ? `ISSUE ${passengerCount} · ₹${fare.totalFare}`
               : 'SELECT DESTINATION STOP'}
           </span>
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-5 h-5 shrink-0" />
         </button>
       </div>
 
@@ -324,21 +353,21 @@ export const QuickTicketing: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white text-[#0F172A] max-w-sm w-full p-5 rounded-3xl border border-[#E2E8F0] shadow-2xl space-y-4 text-center">
             <div className="flex items-center justify-center gap-2 text-[#1D4ED8]">
-              <QrCode className="w-6 h-6 animate-pulse" />
-              <h3 className="font-extrabold text-base text-[#0F172A]">Simulated UPI Payment</h3>
+              <QrCode className="w-6 h-6" />
+              <h3 className="font-extrabold text-base text-[#0F172A]">Simulated UPI (Prototype)</h3>
             </div>
             
             <p className="text-xs text-[#475569]">
-              Ask passenger to scan UPI QR Code for <strong className="text-[#1D4ED8] font-black text-sm">₹{fare.totalFare}</strong>
+              Demo QR for <strong className="text-[#1D4ED8] font-black text-sm">₹{fare.totalFare}</strong> — no real UPI or bank transfer.
             </p>
 
             <div className="bg-[#E8EFFE] p-3 rounded-2xl inline-block border border-[#1D4ED8]/30">
-              <QRCodeSVG value={`upi://pay?pa=bmtc@upi&pn=BMTC&am=${fare.totalFare}&cu=INR`} size={130} />
+              <QRCodeSVG value={`upi://pay?pa=stride-demo@upi&pn=STRIDE%20Demo&am=${fare.totalFare}&cu=INR`} size={130} />
             </div>
 
             <div className="bg-[#F5F7FA] p-2.5 rounded-xl border border-[#E2E8F0] text-[11px] text-[#1D4ED8] font-bold flex items-center justify-center gap-2">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#1D4ED8]" />
-              Waiting for bank confirmation...
+              <Info className="w-3.5 h-3.5 text-[#1D4ED8]" />
+              Simulated payment — tap Confirm or Fail. No bank check.
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">

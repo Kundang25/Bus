@@ -54,7 +54,7 @@ export const MobileDeviceFrame: React.FC<MobileDeviceFrameProps> = ({ children, 
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-[#0B7A5A]"></span>
-                <span className="hidden md:inline">ONLINE</span>
+                <span className="hidden md:inline">LOCAL DEMO</span>
               </>
             )}
           </div>

@@ -43,7 +43,7 @@ export class UsabilityTimerEngine {
     const successUnder4Sec = totalDurationMs <= 4000;
 
     const log: UsabilityLog = {
-      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `LOG-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`,
       timestamp: new Date().toISOString(),
       testCaseName,
       destinationSelectTimeMs: Math.round(this.destSelectedTimeMs),
@@ -53,7 +53,8 @@ export class UsabilityTimerEngine {
       successUnder4Sec,
       misTapCount: this.misTapCount,
       handedness,
-      displayMode
+      displayMode,
+      source: 'desktop-emulated'
     };
 
     this.saveLog(log);
@@ -99,7 +100,8 @@ export class UsabilityTimerEngine {
       'Under4Sec',
       'MisTaps',
       'Handedness',
-      'DisplayMode'
+      'DisplayMode',
+      'Source'
     ];
 
     const rows = logs.map((l) => [
@@ -113,10 +115,12 @@ export class UsabilityTimerEngine {
       l.successUnder4Sec ? 'PASS' : 'FAIL',
       l.misTapCount,
       l.handedness,
-      l.displayMode
+      l.displayMode,
+      l.source || 'desktop-emulated'
     ]);
 
-    return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const comment = '# desktop-emulated, not in-bus phone. Not physical in-bus evidence.';
+    return [comment, headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
   }
 
   public static calculateStats() {

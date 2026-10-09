@@ -1,5 +1,18 @@
 import { BusStop, FareCalculation, FareCategory, Route } from './types';
 
+export const assertForwardJourney = (
+  fromStop: BusStop,
+  toStop: BusStop
+): { ok: true } | { ok: false; reason: string } => {
+  if (fromStop.id === toStop.id || fromStop.stageNumber === toStop.stageNumber) {
+    return { ok: false, reason: 'Same-stop journeys are not allowed' };
+  }
+  if (toStop.stageNumber <= fromStop.stageNumber) {
+    return { ok: false, reason: 'Backward journeys are not allowed' };
+  }
+  return { ok: true };
+};
+
 export const calculateFare = (
   route: Route,
   fromStop: BusStop,

@@ -24,17 +24,17 @@ export const OfflineSyncBanner: React.FC = () => {
         <div>
           <span className="font-bold block text-amber-300">
             {isOffline
-              ? 'OFFLINE MODE ACTIVE (LOCAL STORE)'
+              ? 'SIMULATED OFFLINE (THIS BROWSER ONLY)'
               : isPrinterErr
               ? 'SIMULATED PRINTER PAPER JAM'
-              : 'PENDING SYNC QUEUE'}
+              : 'DEMO QUEUE (NOT SERVER SYNC)'}
           </span>
           <span className="text-[10px] text-amber-200/80">
             {isOffline
-              ? `${pendingCount} tickets saved locally in IndexedDB`
+              ? `${pendingCount} tickets stored in this browser — no real server sync`
               : isPrinterErr
-              ? 'Tickets stored safely in shift history'
-              : 'Syncing with transport servers'}
+              ? 'Tickets stay in local history; print is simulated'
+              : 'Demo pending flag only — not transport-server synchronization'}
           </span>
         </div>
       </div>
