@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* STRIDE Light Theme Design Tokens */
+    --bg: #F5F7FA;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --text: #0F172A;
+    --text-2: #475569;
+
+    /* Primary Brand Green */
+    --brand: #0B7A5A;
+    --brand-tint: #E3F4EE;
+
+    /* Accent & Warnings */
+    --amber: #F59E0B;
+    --amber-tint: #FEF3C7;
+    --amber-text: #92400E;
+
+    /* Danger / Void / End Shift */
+    --danger: #C62828;
+    --danger-tint: #FDECEC;
+
+    /* Payment Specific Colors */
+    --payment-cash: #0B7A5A;
+    --payment-cash-tint: #E3F4EE;
+    
+    --payment-upi: #1D4ED8;
+    --payment-upi-tint: #E8EFFE;
+    
+    --payment-pass: #4338CA;
+    --payment-pass-tint: #EEF2FF;
+
+    --lab: #6D28D9;
+    --lab-tint: #F1E9FE;
+
+    --radius: 16px;
+    --shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+
+    font-family: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Kannada', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .font-mono-numbers {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
