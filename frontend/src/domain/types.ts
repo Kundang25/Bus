@@ -94,6 +94,7 @@ export interface UsabilityLog {
   passengerCount: number;
   successUnder4Sec: boolean;
   misTapCount: number;
+  gripChanges?: number;
   handedness: Handedness;
   displayMode: DisplayMode;
   source?: 'desktop-emulated' | 'phone';

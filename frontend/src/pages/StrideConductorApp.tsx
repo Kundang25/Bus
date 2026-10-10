@@ -8,7 +8,7 @@ import { ShiftSetup } from './ShiftSetup';
 import { OfflineSyncBanner } from '../components/stride/OfflineSyncBanner';
 import { ThumbOverlay } from '../components/stride/ThumbOverlay';
 import { MobileDeviceFrame } from '../components/stride/MobileDeviceFrame';
-import { Ticket as TicketIcon, History, ClipboardList, Settings, Eye, EyeOff } from 'lucide-react';
+import { Ticket as TicketIcon, History, ClipboardList, Settings, Eye, EyeOff, Sun } from 'lucide-react';
 
 export const StrideConductorApp: React.FC = () => {
   const { activeShift, currentTab, setCurrentTab, settings, updateSettings, t } = useStride();
@@ -23,7 +23,9 @@ export const StrideConductorApp: React.FC = () => {
 
   return (
     <MobileDeviceFrame displayMode={settings.displayMode}>
-      <div className="flex flex-col h-full bg-[#F5F7FA] text-[#0F172A] select-none relative overflow-hidden font-sans">
+      <div className={`flex flex-col h-full select-none relative overflow-hidden font-sans ${
+        settings.displayMode === 'sunlight' ? 'bg-white text-black sunlight-mode' : 'bg-[#F5F7FA] text-[#0F172A]'
+      }`}>
         
         {/* Offline & Printer Warning Banner */}
         <OfflineSyncBanner />
@@ -47,7 +49,21 @@ export const StrideConductorApp: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Quick 1-Tap Sunlight Glare Toggle */}
+            <button
+              onClick={() => updateSettings({ displayMode: settings.displayMode === 'sunlight' ? 'standard' : 'sunlight' })}
+              className={`px-2 py-1 rounded-xl text-[10px] font-extrabold border flex items-center gap-1 transition-all ${
+                settings.displayMode === 'sunlight'
+                  ? 'bg-amber-400 text-black border-black ring-1 ring-black shadow-xs'
+                  : 'bg-[#F5F7FA] hover:bg-[#E2E8F0] text-[#0F172A] border-[#E2E8F0]'
+              }`}
+              title="Toggle Bright Sunlight High-Contrast Mode"
+            >
+              <Sun className="w-3 h-3 text-amber-500 fill-amber-500" />
+              <span>{settings.displayMode === 'sunlight' ? 'Sunlight ON' : 'Sunlight'}</span>
+            </button>
+
             {/* Heatmap Toggle with Explicit ON/OFF Text */}
             <button
               onClick={() => updateSettings({ showThumbZonesOverlay: !settings.showThumbZonesOverlay })}
@@ -60,7 +76,7 @@ export const StrideConductorApp: React.FC = () => {
               {settings.showThumbZonesOverlay ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
               <span>Heatmap {settings.showThumbZonesOverlay ? 'ON' : 'OFF'}</span>
             </button>
-            <span className="bg-[#E2E8F0] text-[#0F172A] text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-[#E2E8F0] text-[#0F172A] text-[10px] font-bold px-2 py-0.5 rounded-full hidden sm:inline">
               {activeShift.conductorId}
             </span>
           </div>

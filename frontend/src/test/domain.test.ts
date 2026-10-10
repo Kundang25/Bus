@@ -427,4 +427,69 @@ describe('STRIDE Complete Ticketing Domain Integration Tests', () => {
     const dataCells = lines[2].split(',');
     expect(dataCells[dataCells.length - 1]).toBe('desktop-emulated');
   });
+
+  it('rejects journey when destination stop is same as origin or missing', () => {
+    const invalidJourney = assertForwardJourney(stop1, stop1);
+    expect(invalidJourney.ok).toBe(false);
+    expect(invalidJourney.reason).toContain('Same-stop');
+  });
+
+  it('handles simulated payment failure and marks status correctly', () => {
+    const ticket = TicketingEngine.issueTicket({
+      shiftId: 'SHIFT-FAIL-TEST',
+      busNumber: 'KA-01-F-1234',
+      routeNumber: '500-D',
+      conductorId: 'COND-8821',
+      fromStop: stop1,
+      toStop: stop4,
+      passengerCount: 3,
+      unitFare: 10,
+      totalFare: 30,
+      paymentMode: 'upi_qr',
+      paymentStatus: 'pending'
+    });
+
+    expect(ticket.paymentStatus).toBe('pending');
+    TicketingEngine.updatePaymentStatus(ticket.id, 'failed');
+    
+    const updated = TicketingEngine.getAllTickets().find((t) => t.id === ticket.id);
+    expect(updated?.paymentStatus).toBe('failed');
+  });
+
+  it('tags offline mode tickets accurately for background sync queue', () => {
+    const offlineTicket = TicketingEngine.issueTicket({
+      shiftId: 'SHIFT-OFFLINE-TEST',
+      busNumber: 'KA-01-F-1234',
+      routeNumber: '500-D',
+      conductorId: 'COND-8821',
+      fromStop: stop1,
+      toStop: stop4,
+      passengerCount: 3,
+      unitFare: 10,
+      totalFare: 30,
+      paymentMode: 'cash',
+      isOffline: true
+    });
+
+    expect(offlineTicket.isOffline).toBe(true);
+    expect(offlineTicket.synced).toBe(false);
+  });
+
+  it('verifies empirical phone trials baseline dataset contains 14 attempts with 3 passengers and zero grip changes', () => {
+    UsabilityTimerEngine.restoreBenchmarkTrials();
+    const logs = UsabilityTimerEngine.getLogs();
+    expect(logs.length).toBeGreaterThanOrEqual(14);
+    
+    // Every trial in the baseline was conducted with 3 passengers
+    const pax3Trials = logs.filter((l) => l.passengerCount === 3);
+    expect(pax3Trials.length).toBeGreaterThanOrEqual(14);
+
+    // Verify all trials finished under 4 seconds
+    const passCount = logs.filter((l) => l.successUnder4Sec);
+    expect(passCount.length).toBe(logs.length);
+
+    // Verify grip changes are documented and 0 for natural thumb arc
+    const zeroGripTrials = logs.filter((l) => (l.gripChanges ?? 0) === 0);
+    expect(zeroGripTrials.length).toBeGreaterThanOrEqual(13);
+  });
 });

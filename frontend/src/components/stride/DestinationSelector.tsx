@@ -55,23 +55,23 @@ export const DestinationSelector: React.FC<DestinationSelectorProps> = ({
                 <button
                   key={stop.id}
                   onClick={() => onSelectDestination(stop)}
-                  className={`p-3 rounded-2xl text-left transition-all border flex flex-col justify-between h-20 ${
+                  className={`p-2.5 rounded-2xl text-left transition-all border flex flex-col justify-between min-h-[62px] ${
                     isSelected
                       ? 'bg-[#0B7A5A] text-white border-[#0B7A5A] ring-2 ring-[#0B7A5A]/30 shadow-md font-bold'
-                      : 'bg-white hover:bg-[#F5F7FA] text-[#0F172A] border-[#E2E8F0] shadow-xs'
+                      : 'bg-white hover:bg-[#F5F7FA] text-[#0F172A] border-[#E2E8F0] shadow-xs active:scale-98'
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <span className={`text-[10px] uppercase font-bold tracking-wider ${isSelected ? 'text-white/80' : 'text-[#475569]'}`}>
+                    <span className={`text-[11px] uppercase font-extrabold tracking-wide ${isSelected ? 'text-white/90' : 'text-[#475569]'}`}>
                       {stop.code}
                     </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                    <span className={`text-[11px] px-2 py-0.5 rounded-md font-black ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-[#E2E8F0] text-[#0F172A]'
                     }`}>
-                      S{stop.stageNumber}
+                      Stage {stop.stageNumber}
                     </span>
                   </div>
-                  <span className="text-xs font-bold leading-tight line-clamp-2">{stop.name}</span>
+                  <span className="text-sm font-black leading-tight line-clamp-1 tracking-tight">{stop.name}</span>
                 </button>
               );
             })}

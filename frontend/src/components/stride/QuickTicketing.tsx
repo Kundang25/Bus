@@ -5,7 +5,7 @@ import { ChangeCalculator } from './ChangeCalculator';
 import { TicketReceiptModal } from './TicketReceiptModal';
 import { calculateFare } from '../../domain/fareCalculator';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, Banknote, QrCode, CreditCard, Coins, ChevronRight, CheckCircle2, XCircle, Info, Minus, Plus, RotateCcw, Ticket as TicketIcon } from 'lucide-react';
+import { Users, Banknote, QrCode, CreditCard, Coins, ChevronRight, CheckCircle2, XCircle, Info, Minus, Plus, RotateCcw, Ticket as TicketIcon, Zap } from 'lucide-react';
 import { FareCategory } from '../../domain/types';
 import { toast } from 'sonner';
 
@@ -90,7 +90,12 @@ export const QuickTicketing: React.FC = () => {
             },
             duration: 8000
           });
-          usabilityEngine.stopAndLog('Nielsen 3-Passenger Challenge', passengerCount, settings.handedness, settings.displayMode);
+          if (usabilityEngine.isRunning()) {
+            const log = usabilityEngine.stopAndLog('Nielsen 3-Pax One-Handed', passengerCount, settings.handedness, settings.displayMode);
+            if (log) {
+              toast.success(`⚡ 4s Benchmark: Completed in ${(log.totalDurationMs / 1000).toFixed(2)}s!`);
+            }
+          }
         }
       }
     } catch (err) {
@@ -136,23 +141,43 @@ export const QuickTicketing: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full justify-between space-y-3 pb-2 select-none overflow-y-auto scrollbar-thin pr-1">
+    <div className="flex flex-col h-full justify-between space-y-2.5 pb-2 select-none overflow-y-auto scrollbar-thin pr-1">
       
       {/* Compact 1-Line Header Bar */}
-      <div className={`bg-white border border-[#E2E8F0] rounded-2xl p-2.5 shadow-xs flex items-center justify-between text-xs ${
+      <div className={`bg-white border border-[#E2E8F0] rounded-2xl p-2 shadow-xs flex items-center justify-between text-xs ${
         isRightHand ? '' : 'flex-row-reverse'
       }`}>
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-[#0B7A5A] shrink-0"></span>
           <span className="font-extrabold text-[#0F172A] text-xs">Route {activeRoute.routeNumber}</span>
-          <span className="text-[11px] text-[#475569] truncate max-w-[140px] font-medium">• {activeShift?.direction || 'UP'} Bound</span>
+          <span className="text-[11px] text-[#475569] truncate max-w-[120px] font-medium">• {activeShift?.direction || 'UP'} Bound</span>
         </div>
-        <button
-          onClick={handleRepeatLast}
-          className="text-[10px] bg-[#E3F4EE] hover:bg-[#0B7A5A] text-[#0B7A5A] hover:text-white font-extrabold px-2 py-1 rounded-xl border border-[#0B7A5A]/30 flex items-center gap-1 transition-all shrink-0"
-        >
-          <RotateCcw className="w-3 h-3" /> {t('repeatLast')}
-        </button>
+        
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => {
+              setSelectedDestination(null);
+              usabilityEngine.startTimer();
+              toast.info('4s Benchmark Active: Tap Stop ➔ Tap Issue!');
+            }}
+            className={`text-[10px] font-extrabold px-2 py-1 rounded-xl border flex items-center gap-1 transition-all ${
+              usabilityEngine.isRunning()
+                ? 'bg-amber-400 text-black border-black animate-pulse'
+                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
+            }`}
+            title="Start timed 4-second challenge"
+          >
+            <Zap className="w-3 h-3 text-amber-600 fill-amber-600" />
+            <span>{usabilityEngine.isRunning() ? 'Timer On' : '4s Test'}</span>
+          </button>
+
+          <button
+            onClick={handleRepeatLast}
+            className="text-[10px] bg-[#E3F4EE] hover:bg-[#0B7A5A] text-[#0B7A5A] hover:text-white font-extrabold px-2 py-1 rounded-xl border border-[#0B7A5A]/30 flex items-center gap-1 transition-all shrink-0"
+          >
+            <RotateCcw className="w-3 h-3" /> {t('repeatLast')}
+          </button>
+        </div>
       </div>
 
       {/* Step 1: Destination Selector */}
@@ -198,21 +223,21 @@ export const QuickTicketing: React.FC = () => {
               <button
                 key={cnt}
                 onClick={() => setPassengerCount(cnt)}
-                className={`py-2 rounded-xl font-extrabold text-[11px] leading-tight transition-all border ${
+                className={`py-2 rounded-xl font-black text-xs transition-all border ${
                   isSelected
                     ? 'bg-[#0B7A5A] text-white border-[#0B7A5A] ring-2 ring-[#0B7A5A]/20 shadow-xs'
                     : isNielsenPreset
-                    ? 'bg-[#E3F4EE] text-[#0B7A5A] border-[#0B7A5A] ring-1 ring-[#0B7A5A]/30'
+                    ? 'bg-[#E3F4EE] text-[#0B7A5A] border-[#0B7A5A] ring-1 ring-[#0B7A5A]/30 font-black'
                     : 'bg-[#F5F7FA] hover:bg-[#E2E8F0] text-[#0F172A] border-[#E2E8F0]'
                 }`}
               >
                 {isNielsenPreset ? (
-                  <span className="flex flex-col items-center">
-                    <span>3</span>
-                    <span className="text-[8px] font-bold uppercase tracking-wide">Adults</span>
+                  <span className="flex flex-col items-center leading-none">
+                    <span className="text-sm font-black">3</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider mt-0.5">Pax</span>
                   </span>
                 ) : (
-                  cnt
+                  <span className="text-sm font-black">{cnt}</span>
                 )}
               </button>
             );
@@ -222,10 +247,10 @@ export const QuickTicketing: React.FC = () => {
 
       {/* Step 3: Fare Category Selector */}
       <div className="bg-white border border-[#E2E8F0] p-2.5 rounded-2xl space-y-1.5 shadow-xs">
-        <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider block">
+        <span className="text-[11px] text-[#475569] font-extrabold uppercase tracking-wider block">
           {t('fareCategory')}
         </span>
-        <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
+        <div className="grid grid-cols-3 gap-1.5 text-xs font-extrabold">
           {[
             { id: 'adult', label: 'Adult' },
             { id: 'child', label: 'Child (50%)' },
@@ -236,9 +261,9 @@ export const QuickTicketing: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => setFareCategory(cat.id as FareCategory)}
-                className={`py-1.5 px-2 rounded-xl text-center border transition-all ${
+                className={`py-2 px-2 rounded-xl text-center border transition-all ${
                   isSelected
-                    ? 'bg-[#0B7A5A] text-white border-[#0B7A5A] font-extrabold'
+                    ? 'bg-[#0B7A5A] text-white border-[#0B7A5A] font-black shadow-xs'
                     : 'bg-[#F5F7FA] text-[#0F172A] border-[#E2E8F0]'
                 }`}
               >

@@ -200,9 +200,7 @@ export const StrideProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [activeShiftBase]);
 
   const [currentStopIndex, setCurrentStopIndex] = useState<number>(0);
-  const [selectedDestination, setSelectedDestination] = useState<BusStop | null>(() => {
-    return activeRoute.stops[activeRoute.stops.length > 3 ? 3 : 1];
-  });
+  const [selectedDestination, setSelectedDestination] = useState<BusStop | null>(null);
   const [passengerCount, setPassengerCount] = useState<number>(3);
   const [fareCategory, setFareCategory] = useState<FareCategory>('adult');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
@@ -306,7 +304,7 @@ export const StrideProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setActiveShiftBase(newShiftBase);
     setCurrentStopIndex(0);
-    setSelectedDestination(route.stops[route.stops.length > 3 ? 3 : 1]);
+    setSelectedDestination(null);
   };
 
   const endShift = () => {
@@ -454,12 +452,18 @@ export const StrideProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         confirmDigitalPayment,
         failDigitalPayment,
         lastIssuedTicket,
-        clearLastIssuedTicket: () => setLastIssuedTicket(null),
+        clearLastIssuedTicket: () => {
+          setLastIssuedTicket(null);
+          setSelectedDestination(null);
+        },
         allTickets,
         refreshTickets,
         voidTicket,
         reprintTicket,
-        resetAllDemoData,
+        resetAllDemoData: () => {
+          resetAllDemoData();
+          setSelectedDestination(null);
+        },
         usabilityEngine,
         currentTab,
         setCurrentTab,

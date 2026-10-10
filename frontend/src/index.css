@@ -40,7 +40,13 @@
     --radius: 16px;
     --shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 
-    font-family: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Kannada', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Kannada', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  html, body, button, input, select, textarea {
+    font-family: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Kannada', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
@@ -52,5 +58,66 @@
   .font-mono-numbers {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* HIGH-CONTRAST SUNLIGHT GLARE MODE STYLING (WCAG AAA Outdoors) */
+  .sunlight-mode {
+    --bg: #FFFFFF;
+    --surface: #FFFFFF;
+    --border: #000000;
+    --text: #000000;
+    --text-2: #000000;
+    --brand: #000000;
+    --brand-tint: #FEF08A;
+    filter: contrast(125%);
+  }
+
+  .sunlight-mode button,
+  .sunlight-mode input,
+  .sunlight-mode select {
+    border-color: #000000 !important;
+    border-width: 2px !important;
+    font-weight: 800 !important;
+  }
+
+  .sunlight-mode .bg-\[\#F5F7FA\],
+  .sunlight-mode .bg-white {
+    background-color: #FFFFFF !important;
+    border-color: #000000 !important;
+    border-width: 2px !important;
+  }
+
+  .sunlight-mode .text-\[\#475569\],
+  .sunlight-mode .text-slate-500,
+  .sunlight-mode .text-slate-400 {
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+
+  .sunlight-mode .border-\[\#E2E8F0\] {
+    border-color: #000000 !important;
+    border-width: 2px !important;
+  }
+
+  .sunlight-mode .bg-\[\#0B7A5A\] {
+    background-color: #047857 !important;
+    color: #FFFFFF !important;
+    border: 3px solid #000000 !important;
+    font-weight: 900 !important;
+  }
+
+  .sunlight-mode .bg-\[\#E3F4EE\] {
+    background-color: #FEF08A !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    font-weight: 900 !important;
+  }
+
+  .sunlight-mode .text-\[10px\],
+  .sunlight-mode .text-\[11px\],
+  .sunlight-mode .text-xs {
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    color: #000000 !important;
   }
 }
